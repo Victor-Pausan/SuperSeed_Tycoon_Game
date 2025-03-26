@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using TMPro;
 using System.Collections;
 
@@ -11,10 +12,9 @@ public class GameManager : MonoBehaviour
     public float loanCollateralRatio = 5f;
     public float adEffectiveness = 1f;
     public int employees = 0;
-    public int adCost = 10;
+    public float adCost = 10f; // Starting ad cost
     public float collateralBalance = 0f;
-    private float repaymentAmount = 0f;
-    private bool isRepaying = false;
+    private float repaymentAmount = 0f; // Repayment rate, starts with a base value
     private int adCampaigns = 0;
     private bool eligibleToBuyAd = false;
 
@@ -35,6 +35,14 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    void Start()
+    {
+        // Set a base repayment rate and start the repayment system
+        repaymentAmount = 0.05f; // Small base rate (adjust as needed)
+        Debug.Log($"Repayment system started with base rate: {repaymentAmount}");
+        StartCoroutine(RepayLoanCoroutine());
     }
 
     void Update()
@@ -67,37 +75,47 @@ public class GameManager : MonoBehaviour
 
     public void RunAdCampaign()
     {
-        if (suprBalance >= adCost && eligibleToBuyAd && !isRepaying)
+        if (suprBalance >= adCost && eligibleToBuyAd)
         {
             adCampaigns += 1;
-            adCost = 10 * adCampaigns * 2;
+            
+            // Increase ad cost exponentially with each campaign
+            adCost = 10f * Mathf.Pow(2, adCampaigns - 1);
             
             suprBalance -= adCost;
             float newUsers = adCost * adEffectiveness * 0.1f;
-            repaymentAmount = newUsers * 0.1f; // Calculate repayment per interval
-            Debug.Log($"Ad campaign ran! New users: {newUsers}, Repayment per 10s: {repaymentAmount}");
-
-            // Start repayment coroutine if not already running
-            if (!isRepaying)
-            {
-                StartCoroutine(RepayLoanCoroutine());
-            }
+            float campaignRepayment = newUsers * 0.1f; // Repayment boost from this campaign
+            repaymentAmount += campaignRepayment; // Add to the existing repayment rate
+            Debug.Log($"Ad campaign {adCampaigns} ran! New users: {newUsers}, Added repayment: {campaignRepayment}, Total repayment rate: {repaymentAmount}");
+        }
+        else
+        {
+            Debug.Log("Cannot run ad campaign: insufficient funds or no loan taken!");
         }
     }
 
     private IEnumerator RepayLoanCoroutine()
     {
-        isRepaying = true;
-        while (loanBalance > 0 && repaymentAmount > 0)
+        while (true) // Runs constantly throughout the game
         {
-            yield return new WaitForSeconds(1f); // Wait 1 second
-            loanBalance = Mathf.Max(0, loanBalance - repaymentAmount);
-            suprBalance += repaymentAmount * 5;
-            collateralBalance -= repaymentAmount * 5;
-            Debug.Log($"Loan repaid by {repaymentAmount}. Remaining: {loanBalance}");
+            yield return new WaitForSeconds(0.1f); // Adjust interval (0.1s for testing, 10s for slower pace)
+
+            if (loanBalance > 0 && repaymentAmount > 0)
+            {
+                float repaymentThisTick = repaymentAmount; // Amount to repay this tick
+                loanBalance = Mathf.Max(0, loanBalance - repaymentThisTick);
+                suprBalance += repaymentThisTick * 5; // Return collateral as loan is repaid
+                collateralBalance = Mathf.Max(0, collateralBalance - repaymentThisTick * 5); // Reduce collateral
+                Debug.Log($"Loan repaid by {repaymentThisTick}. Remaining loan: {loanBalance}, Collateral: {collateralBalance}");
+            }
+            else if (loanBalance <= 0 && collateralBalance > 0)
+            {
+                // If loan is fully repaid but collateral remains, return it fully
+                suprBalance += collateralBalance;
+                Debug.Log($"Loan fully repaid! Collateral returned: {collateralBalance}");
+                collateralBalance = 0;
+            }
         }
-        isRepaying = false;
-        Debug.Log("Loan fully repaid or no active repayment!");
     }
 
     public void HireEmployee()
@@ -110,5 +128,15 @@ public class GameManager : MonoBehaviour
             adEffectiveness += 0.5f;
             Debug.Log($"Employee hired! Total: {employees}");
         }
+    }
+
+    // Optional: For updating UI references across scenes
+    public void UpdateUIReferences(TextMeshProUGUI newSuprText, TextMeshProUGUI newLoanText, 
+                                   TextMeshProUGUI newCollateralText, TextMeshProUGUI newRunAdText)
+    {
+        suprText = newSuprText;
+        loanText = newLoanText;
+        collatertalText = newCollateralText;
+        runAdText = newRunAdText;
     }
 }
