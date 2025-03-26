@@ -1,10 +1,12 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class BackToRoom : MonoBehaviour
 {
-    public void ReturnToRoom()
+    public GameObject dashboardCanvas;
+    public GameObject room;
+    void OnMouseDown()
     {
-        SceneManager.LoadScene("RoomScene");
+        room.SetActive(true);
+        dashboardCanvas.SetActive(false);
     }
 }
