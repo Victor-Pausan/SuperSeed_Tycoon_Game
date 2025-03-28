@@ -2,6 +2,8 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using System.Net.Mime;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -19,12 +21,15 @@ public class GameManager : MonoBehaviour
     private int adCampaigns = 0;
     private bool eligibleToBuyAd = false;
     private float baseHireCost = 30f;
+    public float maxAmountToLoan = 0 ;
 
     public TextMeshProUGUI suprText;
     public TextMeshProUGUI loanText;
     public TextMeshProUGUI collatertalText;
     public TextMeshProUGUI runAdText;
     public TextMeshProUGUI employeesText; // New UI to display employee count
+    public TextMeshProUGUI maxAmountLoan;
+    public TextMeshProUGUI repaymentRatio;
 
     void Awake()
     {
@@ -50,12 +55,15 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        maxAmountToLoan = suprBalance / loanCollateralRatio;
         // Update UI if references exist
-        if (suprText != null) suprText.text = $"SUPR: {suprBalance:F2}";
-        if (loanText != null) loanText.text = $"Loan: {loanBalance:F2} SUPR";
-        if (collatertalText != null) collatertalText.text = $"Collateral: {collateralBalance:F2} SUPR";
+        if (suprText != null) suprText.text = $"SUPR balance: {suprBalance:F2} (loan up to {maxAmountToLoan})";
+        if (loanText != null) loanText.text = $"Loaned: {loanBalance:F2} SUPR";
+        if (collatertalText != null) collatertalText.text = $"Collateral SUPR: {collateralBalance:F2}";
         if (runAdText != null) runAdText.text = $"Run ad campaign: {adCost:F2} SUPR";
         if (employeesText != null) employeesText.text = $"Hire employee: {baseHireCost} SUPR";
+        if (maxAmountLoan != null) maxAmountLoan.text = $"Max amount to loan: {maxAmountToLoan}";
+        if (repaymentRatio != null) repaymentRatio.text = $"Repayment ratio: {repaymentAmount} supr/s";
     }
 
     public void TakeLoan(float amount)
@@ -125,7 +133,7 @@ public class GameManager : MonoBehaviour
     {
         float hireCost = baseHireCost * Mathf.Pow(1.5f, employees); // Cost increases with each hire
 
-        if (suprBalance >= hireCost)
+        if (suprBalance >= hireCost && eligibleToBuyAd)
         {
             suprBalance -= hireCost;
             employees += 1;
